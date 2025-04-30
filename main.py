@@ -3,12 +3,28 @@ from linebot import LineBotApi, WebhookHandler
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 from linebot.exceptions import InvalidSignatureError
 import os
+import gspread
+from google.oauth2.service_account import Credentials
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# 環境変数からキーを取得（Render用）
 line_bot_api = LineBotApi(os.environ.get("LINE_CHANNEL_ACCESS_TOKEN"))
 handler = WebhookHandler(os.environ.get("LINE_CHANNEL_SECRET"))
+
+# --- Google Sheets API設定 ---
+SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
+SPREADSHEET_ID = '18uzTFvHbNdM3D-036IgcEO81yNbZzjeMd0oEa1JGhgw'
+
+# 認証ファイルのパス（Render環境では環境変数を使って設定する）
+GOOGLE_CREDENTIALS_JSON = 'credentials.json'  # 後でRenderにアップする
+
+creds = Credentials.from_service_account_file(
+    GOOGLE_CREDENTIALS_JSON,
+    scopes=SCOPES
+)
+gc = gspread.authorize(creds)
+worksheet = gc.open_by_key(SPREADSHEET_ID).sheet1
 
 @app.route("/callback", methods=['POST'])
 def callback():
@@ -24,11 +40,27 @@ def callback():
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
-    text = event.message.text
+    user_text = event.message.text.strip()
+
+    if '明日' in user_text or '持ち物' in user_text or '行事' in user_text:
+        reply = get_schedule_for_tomorrow()
+    else:
+        reply = f"「明日の持ち物」「行事」などを聞いてみてね！"
+
     line_bot_api.reply_message(
         event.reply_token,
-        TextSendMessage(text=text)
+        TextSendMessage(text=reply)
     )
+
+def get_schedule_for_tomorrow():
+    tomorrow = (datetime.now() + timedelta(days=1)).strftime('%Y/%m/%d')
+    data = worksheet.get_all_records()
+
+    for row in data:
+        if row['日付'] == tomorrow:
+            return f"【{tomorrow}の予定】\n🧳持ち物: {row['持ち物']}\n📅行事: {row['行事']}\n📚時間割: {row['時間割']}"
+
+    return f"{tomorrow} のデータが見つかりませんでした。"
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
