@@ -46,10 +46,11 @@ def callback():
 def handle_message(event):
     user_text = event.message.text.strip()
 
-    if '明日' in user_text or '持ち物' in user_text or '行事' in user_text:
-        reply = get_schedule_for_tomorrow()
-    else:
-        reply = f"「明日の持ち物」「行事」などを聞いてみてね！"
+    try:
+        # ここでChatGPTに質問を送って返答を受け取る
+        reply = ask_chatgpt(user_text)
+    except Exception as e:
+        reply = f"エラーが発生しました：{e}"
 
     line_bot_api.reply_message(
         event.reply_token,
