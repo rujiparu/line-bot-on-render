@@ -7,6 +7,22 @@ import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime, timedelta
 import openai
+from openai import OpenAI
+
+def ask_chatgpt(user_input):
+    client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+
+    chat_completion = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": "あなたは小学生の保護者に優しく答えるアシスタントです。"},
+            {"role": "user", "content": user_input}
+        ],
+        temperature=0.7
+    )
+
+    return chat_completion.choices[0].message.content.strip()
+
 
 app = Flask(__name__)
 
@@ -43,21 +59,7 @@ def callback():
 
     return 'OK'
 
-# ChatGPTから返答をもらう関数
-def ask_chatgpt(user_input):
-    openai.api_key = os.environ.get("OPENAI_API_KEY")
-    
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",  # または "gpt-4"（課金状況による）
-        messages=[
-            {"role": "system", "content": "あなたは小学生の保護者に優しく答えるアシスタントです。"},
-            {"role": "user", "content": user_input}
-        ],
-        max_tokens=500,
-        temperature=0.7
-    )
-    
-    return response.choices[0].message.content.strip()
+
 
 
 @handler.add(MessageEvent, message=TextMessage)
