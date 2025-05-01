@@ -17,12 +17,16 @@ SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 SPREADSHEET_ID = '18uzTFvHbNdM3D-036IgcEO81yNbZzjeMd0oEa1JGhgw'
 
 # 認証ファイルのパス（Render環境では環境変数を使って設定する）
-GOOGLE_CREDENTIALS_JSON = 'credentials.json'  # 後でRenderにアップする
+import base64
 
-creds = Credentials.from_service_account_file(
-    GOOGLE_CREDENTIALS_JSON,
-    scopes=SCOPES
-)
+base64_creds = os.environ.get("GOOGLE_CREDS_BASE64")
+creds_path = "/tmp/credentials.json"
+
+with open(creds_path, "wb") as f:
+    f.write(base64.b64decode(base64_creds))
+
+creds = Credentials.from_service_account_file(creds_path, scopes=SCOPES)
+
 gc = gspread.authorize(creds)
 worksheet = gc.open_by_key(SPREADSHEET_ID).sheet1
 
